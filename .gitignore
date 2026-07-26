@@ -15,3 +15,15 @@ node_modules
 .DS_Store
 __pycache__/
 *.py[cod]
+
+# Cloudflare local state, generated assets, and credentials
+cloudflare/pages/dist/
+cloudflare/**/.wrangler/
+cloudflare/worker/.dev.vars
+cloudflare/.dev.vars
+cloudflare/.env.deploy.local
+cloudflare/generated/
+cloudflare/worker/wrangler.generated.toml
+cloudflare/pages/wrangler.generated.toml
+cloudflare/tests/artifacts/
+cloudflare/.npm-cache/

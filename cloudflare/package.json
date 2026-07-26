@@ -1,0 +1,67 @@
+{
+  "name": "vps-one-cloudflare",
+  "version": "1.0.0",
+  "description": "Self-contained Cloudflare Workers deployment for VPS-ONE with D1, Queues, Cron Triggers, and Worker Assets.",
+  "private": true,
+  "type": "module",
+  "cloudflare": {
+    "label": "VPS-ONE",
+    "products": [
+      "Workers",
+      "D1",
+      "Queues"
+    ],
+    "categories": [
+      "storage"
+    ],
+    "publish": false,
+    "bindings": {
+      "ASSETS": {
+        "description": "Static VPS-ONE admin and customer interface served by this Worker."
+      },
+      "DB": {
+        "description": "D1 stores users, plans, orders, wallets, encrypted provider configuration, jobs, and audit data. Migrations are applied automatically during deployment."
+      },
+      "JOBS": {
+        "description": "Queue used for provisioning, email delivery, payment processing, and retryable background jobs."
+      },
+      "SECRET_KEY": {
+        "description": "Generate a unique random value of at least 32 bytes. It peppers password hashes and signs security tokens; changing it invalidates existing passwords."
+      },
+      "MASTER_KEY": {
+        "description": "Generate a different random value of at least 32 bytes. It encrypts CLICD tokens, HashPay keys, card inventory, and instance credentials. Losing it makes encrypted data unrecoverable."
+      },
+      "ADMIN_BOOTSTRAP_TOKEN": {
+        "description": "A one-time random token used on the first-run setup screen to create the administrator account."
+      },
+      "RESEND_API_TOKEN": {
+        "description": "Resend API token used for instance credentials, digital delivery, refund codes, and test email."
+      },
+      "EMAIL_FROM": {
+        "description": "Verified Resend sender, for example VPS-ONE <noreply@example.com>."
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build-pages.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test worker/test/*.test.js tests/*.test.js",
+    "dev": "npm run build && node scripts/run-wrangler.mjs dev --local --persist-to .wrangler/state",
+    "start": "npm run dev",
+    "preview": "node tests/mock-preview.cjs",
+    "test:e2e": "node tests/pages-e2e.cjs",
+    "db:migrate:local": "node scripts/run-wrangler.mjs d1 migrations apply DB --local",
+    "db:migrate:remote": "node scripts/run-wrangler.mjs d1 migrations apply DB --remote",
+    "deploy": "npm run build && npm run db:migrate:remote && node scripts/run-wrangler.mjs deploy --keep-vars",
+    "deploy:dry": "npm run build && node scripts/run-wrangler.mjs deploy --dry-run --outdir .wrangler/dry-run",
+    "cf-typegen": "node scripts/run-wrangler.mjs types",
+    "deploy:worker": "wrangler deploy --config worker/wrangler.generated.toml",
+    "deploy:pages": "wrangler pages deploy pages/dist --project-name vps-one-cf-beta --config pages/wrangler.generated.toml",
+    "dev:worker": "wrangler dev --config worker/wrangler.toml --local --persist-to worker/.wrangler/state",
+    "dev:pages": "wrangler pages dev pages/dist --config pages/wrangler.toml"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.0",
+    "wrangler": "^4.100.0"
+  }
+}

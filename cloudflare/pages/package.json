@@ -1,0 +1,15 @@
+{
+  "name": "vps-one-cloudflare-pages",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../scripts/build-pages.mjs",
+    "dev": "wrangler pages dev dist --compatibility-date=2026-07-25",
+    "deploy": "wrangler pages deploy dist --project-name vps-one-cf-beta",
+    "check": "node --check src/app.js && node --check functions/api/[[path]].js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.30.0"
+  }
+}

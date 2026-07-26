@@ -1,0 +1,17 @@
+{
+  "name": "vps-one-cloudflare-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to .wrangler/state",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.js",
+    "check": "node --check src/index.js && node --check src/lib/crypto.js && node --check src/lib/clicd.js && node --check src/lib/instances.js && node --check src/lib/jobs.js",
+    "db:local": "wrangler d1 migrations apply vps-one-cf-beta --local",
+    "db:remote": "wrangler d1 migrations apply vps-one-cf-beta --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.30.0"
+  }
+}

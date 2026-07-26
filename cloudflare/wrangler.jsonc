@@ -1,0 +1,53 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "vps-one",
+  "main": "worker/src/index.js",
+  "compatibility_date": "2026-07-25",
+  "workers_dev": true,
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./pages/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/healthz"]
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "SESSION_TTL_DAYS": "14",
+    "COOKIE_SAME_SITE": "Lax",
+    "ALLOWED_ORIGINS": "",
+    "PAGES_ORIGIN": "",
+    "ALLOW_INSECURE_UPSTREAMS": "false",
+    "RESEND_API_URL": "https://api.resend.com/emails"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vps-one",
+      "migrations_dir": "worker/migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "JOBS",
+        "queue": "vps-one-jobs"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "vps-one-jobs",
+        "max_batch_size": 5,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "vps-one-dead"
+      }
+    ]
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

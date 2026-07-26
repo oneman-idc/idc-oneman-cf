@@ -8,6 +8,10 @@ This is a ONEMAN IDC project bootstrapped with python3.
 
 # IDC-ONEMAN 部署说明 
 
+Cloudflare 原生版本可通过下方按钮部署为单个 Worker；D1、Queues、Cron、静态资源与 Resend 邮件配置会在部署流程中完成。完整说明见 [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md)，原 Python/FastAPI/Docker 部署方式保持不变。
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Foneman-idc%2Fidc-oneman-cf%2Ftree%2Fmain%2Fcloudflare)
+
 演示DEMO:https://p02--vps--mgsq65kksm7q.code.run/
 
 ## 1. 服务器要求

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN" data-skin="dashboard" data-mode="system" data-color="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="VPS-ONE Cloudflare edge control plane">
+  <title>VPS-ONE</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/themes.css">
+  <link rel="stylesheet" href="/cf.css">
+  <script src="/assets/ui.js"></script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="nav"><div class="container"><a class="brand" href="#store"><b>VPS</b>-ONE</a><nav class="links"><span id="primary-nav" class="cf-nav-links"></span></nav></div></header>
+  <div id="flash" role="status" aria-live="polite"></div>
+  <main id="app"><section class="cf-loading"><span></span><span></span><span></span></section></main>
+  <footer><div class="container row"><span id="footer-brand">VPS-ONE</span><span>Orders · Instances · Support</span></div></footer>
+  <dialog id="vnc-dialog" class="vnc-dialog"><div class="vnc-head"><strong id="vnc-title">WebVNC</strong><button type="button" class="ui-panel-close" data-close-vnc aria-label="Close">×</button></div><div id="vnc-screen"></div></dialog>
+</body>
+</html>

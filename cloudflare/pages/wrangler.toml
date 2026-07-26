@@ -1,0 +1,10 @@
+name = "vps-one-cf-beta"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-07-25"
+
+[vars]
+API_BASE_URL = ""
+
+[[services]]
+binding = "API"
+service = "vps-one-cf-beta-api"

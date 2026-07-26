@@ -1,0 +1,6 @@
+SECRET_KEY=replace-with-64-random-hex
+MASTER_KEY=replace-with-64-random-hex
+ADMIN_BOOTSTRAP_TOKEN=replace-with-one-time-random-token
+PAGES_ORIGIN=http://127.0.0.1:8788
+RESEND_API_TOKEN=
+EMAIL_FROM=VPS-ONE <noreply@example.com>

@@ -1,0 +1,37 @@
+name = "vps-one-cf-beta-api"
+main = "src/index.js"
+compatibility_date = "2026-07-25"
+workers_dev = true
+
+[vars]
+ENVIRONMENT = "beta"
+SESSION_TTL_DAYS = "14"
+COOKIE_SAME_SITE = "Lax"
+ALLOWED_ORIGINS = "http://localhost:8788,http://127.0.0.1:8788"
+PAGES_ORIGIN = "https://vps-one-cf-beta.pages.dev"
+ALLOW_INSECURE_UPSTREAMS = "false"
+RESEND_API_URL = "https://api.resend.com/emails"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vps-one-cf-beta"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "vps-one-cf-beta-jobs"
+
+[[queues.consumers]]
+queue = "vps-one-cf-beta-jobs"
+max_batch_size = 5
+max_batch_timeout = 5
+max_retries = 5
+dead_letter_queue = "vps-one-cf-beta-dead"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
