@@ -58,7 +58,7 @@ Worker 首次处理 API、Queue 或 Cron 前还会检查 16 张必需表和实�
 | `EMAIL_FROM` | 实例、卡密和退款邮件发件人 | 已验证域名，如 `VPS-ONE <noreply@example.com>` |
 | `ALLOWED_ORIGINS` | 你要使用的自定义跨域域名 | 如 `a.com,b.com,c.com` |
 | `PAGES_ORIGIN` | 你要使用的自定义跨域域名 | 如 `a.com,b.com,c.com` |
-建议ALLOWED_ORIGINS PAGES_ORIGIN值保持一致！
+|建议ALLOWED_ORIGINS PAGES_ORIGIN值保持一致！|
 
 ## 关于MASTER_KEY的重要说明：
 
