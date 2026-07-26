@@ -4,6 +4,15 @@
 
 > 部署页面会要求你登录 Cloudflare 和 GitHub，并由 Cloudflare 在你的账号中创建资源。只有使用本地 Wrangler 或自动化脚本部署时才需要 OAuth 登录或 API Token。
 
+![Cloudflare 部署截图](docs/images/1.png)
+![Cloudflare 部署截图](docs/images/2.png)
+![Cloudflare 部署截图](docs/images/3.png)
+![Cloudflare 部署截图](docs/images/4.png)
+![Cloudflare 部署截图](docs/images/5.png)
+![Cloudflare 部署截图](docs/images/6.png)
+![Cloudflare 部署截图](docs/images/7.png)
+![Cloudflare 部署截图](docs/images/8.png)
+
 ## 1. 一键部署
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https%3A%2F%2Fgithub.com%2Foneman-idc%2Fidc-oneman-cf%2Ftree%2Fmain%2Fcloudflare)
