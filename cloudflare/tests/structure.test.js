@@ -29,10 +29,15 @@ test("Worker Assets build contains SPA, shared themes, and noVNC", async () => {
   await assert.rejects(stat(path.join(output, "_redirects")), { code: "ENOENT" });
   const html = await readFile(path.join(output, "index.html"), "utf8");
   const app = await readFile(path.join(output, "app.js"), "utf8");
+  const headers = await readFile(path.join(output, "_headers"), "utf8");
   assert.match(html, /<title>VPS-ONE<\/title>/);
   assert.match(html, /\/assets\/themes\.css/);
   assert.match(app, /state\.plans = plans\.plans \|\| \[\]/);
   assert.match(app, /data-form="bootstrap"/);
+  assert.match(headers, /connect-src 'self' wss:/);
+  assert.match(headers, /form-action 'self'/);
+  assert.doesNotMatch(headers, /connect-src[^\n]*https:/);
+  assert.doesNotMatch(headers, /max-age=3600/);
 });
 
 test("deploy template is self-contained and declares required secrets", async () => {
