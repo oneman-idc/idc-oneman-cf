@@ -6,6 +6,7 @@ import { config, plans } from "./routes/public.js";
 import { createVncSession, proxyVnc } from "./routes/vnc.js";
 import { consumeQueue, scheduledMaintenance } from "./lib/jobs.js";
 import { corsHeaders, originAllowed } from "./lib/cors.js";
+import { ensureSchema } from "./lib/schema.js";
 import { fail, HttpError, json, route } from "./lib/util.js";
 
 function withCors(response, request, env) {
@@ -27,8 +28,13 @@ async function dispatch(request, env, ctx) {
       "Access-Control-Max-Age": "86400",
     } });
   }
-  if (!env.DB || !env.SECRET_KEY || !env.MASTER_KEY) return fail(503, "bindings_missing", "D1, SECRET_KEY, or MASTER_KEY is not configured");
-  if ((path === "/healthz" || path === "/api/healthz") && method === "GET") return json({ status: "ok", runtime: "cloudflare-workers", environment: env.ENVIRONMENT || "production" });
+  if (!env.DB) return fail(503, "d1_binding_missing", "D1 binding DB is not configured");
+  await ensureSchema(env);
+  const missingBindings = ["SECRET_KEY", "MASTER_KEY"].filter((name) => !env[name]);
+  if ((path === "/healthz" || path === "/api/healthz") && method === "GET") {
+    return json({ status: missingBindings.length ? "degraded" : "ok", runtime: "cloudflare-workers", environment: env.ENVIRONMENT || "production", missing_bindings: missingBindings }, missingBindings.length ? 503 : 200);
+  }
+  if (missingBindings.length) return fail(503, "bindings_missing", `Missing Worker bindings: ${missingBindings.join(", ")}`);
   if (path === "/api/config" && method === "GET") return config(request, env);
   if (path === "/api/plans" && method === "GET") return plans(request, env);
   if (path === "/api/session" && method === "GET") return getSession(request, env);
@@ -90,8 +96,11 @@ export default {
       return withCors(fail(500, "internal_error", "An unexpected Worker error occurred", env.ENVIRONMENT === "beta" ? String(error.stack || error) : undefined), request, env);
     }
   },
-  queue: consumeQueue,
+  async queue(batch, env, ctx) {
+    await ensureSchema(env);
+    return consumeQueue(batch, env, ctx);
+  },
   scheduled(_controller, env, ctx) {
-    ctx.waitUntil(scheduledMaintenance(env));
+    ctx.waitUntil(ensureSchema(env).then(() => scheduledMaintenance(env)));
   },
 };

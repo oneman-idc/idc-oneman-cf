@@ -5,12 +5,33 @@ import { accessDetails, clicdRequest, containerDetails, normalizeClicdUrl, planP
 import { allowedOrigins, corsHeaders, originAllowed } from "../src/lib/cors.js";
 import { completeAccessDetails, deliveryReport, mergeInstanceDetails, needsInstanceSync } from "../src/lib/instances.js";
 import { sendMail } from "../src/lib/mail.js";
+import { applyDatabaseSchema, requiredTables } from "../src/lib/schema-core.js";
 import { fromBase64Url, randomLetters, randomToken, route } from "../src/lib/util.js";
+import { bootstrap } from "../src/routes/auth.js";
+
+function schemaDb({ tableCount = requiredTables.length, columns = [] } = {}) {
+  const events = [];
+  const db = {
+    prepare(sql) {
+      const statement = {
+        sql,
+        bind(...values) { statement.values = values; return statement; },
+        async first() { return sql.includes("sqlite_master") ? { count: tableCount } : null; },
+        async all() { return sql.startsWith("PRAGMA table_info") ? { results: columns.map((name) => ({ name })) } : { results: [] }; },
+        async run() { events.push({ type: "run", sql }); },
+      };
+      return statement;
+    },
+    async exec(sql) { events.push({ type: "exec", sql }); },
+    async batch(statements) { events.push({ type: "batch", statements }); },
+  };
+  return { db, events };
+}
 
 test("password hashing and encrypted values round-trip in Workers WebCrypto", async () => {
   const secretKey = "worker-secret-key-for-password-pepper";
   const encoded = await hashPassword("StrongPassword123", secretKey);
-  assert.match(encoded, /^pbkdf2_sha256_peppered\$210000\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/);
+  assert.match(encoded, /^hmac_sha256_peppered\$[A-Za-z0-9_-]+\$[a-f0-9]{64}$/);
   assert.equal(await verifyPassword(encoded, "StrongPassword123", secretKey), true);
   assert.equal(await verifyPassword(encoded, "WrongPassword123", secretKey), false);
   assert.equal(await verifyPassword(encoded, "StrongPassword123", "different-secret-key"), false);
@@ -77,6 +98,62 @@ test("CLICD details normalize nested access and NAT port mappings", () => {
   assert.deepEqual(accessDetails({ data: { subUserInfo: { userName: "camel-user", initialPassword: "camel-secret", accessCode: "camel-code", loginUrl: "https://panel.example.test/login" } } }), {
     username: "camel-user", password: "camel-secret", access_code: "camel-code", management_url: "https://panel.example.test/login",
   });
+});
+
+test("D1 runtime schema initializes empty databases and repairs old instance tables", async () => {
+  const fresh = schemaDb({ tableCount: 0, columns: ["remote_name", "details_state", "details_error"] });
+  await applyDatabaseSchema(fresh.db, "CREATE TABLE bootstrap_test(id INTEGER);");
+  assert.equal(fresh.events.filter((event) => event.type === "exec").length, 1);
+  assert.match(fresh.events.find((event) => event.type === "exec").sql, /CREATE TABLE bootstrap_test/);
+  assert.equal(fresh.events.filter((event) => event.type === "batch").length, 0);
+
+  const legacy = schemaDb({ columns: ["id", "name"] });
+  await applyDatabaseSchema(legacy.db, "unused");
+  assert.equal(legacy.events.filter((event) => event.type === "exec").length, 0);
+  const repairs = legacy.events.filter((event) => event.type === "run" && event.sql.includes("ADD COLUMN "));
+  assert.deepEqual(repairs.map((event) => event.sql.split("ADD COLUMN ")[1].split(" ")[0]), ["remote_name", "details_state", "details_error"]);
+});
+
+test("administrator bootstrap reports missing configuration and commits one D1 batch", async () => {
+  const requestBody = { email: "admin@example.com", password: "StrongPassword123" };
+  const unconfigured = new Request("https://worker.example/api/bootstrap", { method: "POST", body: JSON.stringify(requestBody) });
+  await assert.rejects(bootstrap(unconfigured, { DB: {} }), (error) => error.code === "bootstrap_token_missing" && error.status === 503);
+
+  const batches = [];
+  const db = {
+    prepare(sql) {
+      const statement = {
+        sql,
+        bind(...values) { statement.values = values; return statement; },
+        async first() {
+          if (sql.includes("RETURNING count")) return { count: 1 };
+          if (sql.includes("COUNT(*) count FROM users")) return { count: 0 };
+          if (sql.includes("SELECT 1 FROM users WHERE username")) return null;
+          if (sql.includes("SELECT id, username, email, is_admin")) return { id: 1, username: "abcdef", email: "admin@example.com", is_admin: 1 };
+          return null;
+        },
+      };
+      return statement;
+    },
+    async batch(statements) { batches.push(statements); },
+  };
+  const configured = new Request("https://worker.example/api/bootstrap", {
+    method: "POST",
+    headers: { Authorization: "Bearer bootstrap-secret", "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody),
+  });
+  const response = await bootstrap(configured, {
+    DB: db,
+    ADMIN_BOOTSTRAP_TOKEN: "bootstrap-secret",
+    SECRET_KEY: "worker-secret-key-for-password-pepper",
+    SESSION_TTL_DAYS: "14",
+  });
+  assert.equal(response.status, 201);
+  assert.match(response.headers.get("Set-Cookie"), /^vps_session=.*HttpOnly; Secure; SameSite=Lax/);
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0].length, 3);
+  assert.match(batches[0][0].sql, /WHERE NOT EXISTS \(SELECT 1 FROM users\)/);
+  assert.equal((await response.json()).user.email, "admin@example.com");
 });
 
 test("CLICD configuration accepts HTTP and preserves non-empty instance details", () => {

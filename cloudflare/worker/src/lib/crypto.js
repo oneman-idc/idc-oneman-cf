@@ -24,17 +24,17 @@ export function equalText(left, right) {
 }
 
 export async function hashPassword(password, secretKey) {
-  const salt = randomToken(16);
-  const iterations = 210_000;
-  const material = await crypto.subtle.importKey("raw", bytes(`${password}\0${secretKey}`), "PBKDF2", false, ["deriveBits"]);
-  const result = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: fromBase64Url(salt), iterations }, material, 256);
-  return `pbkdf2_sha256_peppered$${iterations}$${salt}$${base64Url(result)}`;
+  const salt = randomToken(24);
+  return `hmac_sha256_peppered$${salt}$${await hmacHex(secretKey, `password:v2:${salt}:${password}`)}`;
 }
 
 export async function verifyPassword(encoded, password, secretKey) {
   const parts = String(encoded || "").split("$");
   if (parts[0] === "hmac_sha256" && parts.length === 3 && parts[1] && parts[2]) {
     return equalText(await hmacHex(secretKey, `password:v1:${parts[1]}:${password}`), parts[2]);
+  }
+  if (parts[0] === "hmac_sha256_peppered" && parts.length === 3 && parts[1] && parts[2]) {
+    return equalText(await hmacHex(secretKey, `password:v2:${parts[1]}:${password}`), parts[2]);
   }
   const [algorithm, rounds, saltText, expected] = parts;
   const iterations = Number(rounds);

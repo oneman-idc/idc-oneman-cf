@@ -4,6 +4,13 @@
   "main": "worker/src/index.js",
   "compatibility_date": "2026-07-25",
   "workers_dev": true,
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.sql"],
+      "fallthrough": true
+    }
+  ],
   "assets": {
     "binding": "ASSETS",
     "directory": "./pages/dist",

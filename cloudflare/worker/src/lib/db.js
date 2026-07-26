@@ -25,15 +25,20 @@ export async function setSettings(env, values) {
   if (statements.length) await env.DB.batch(statements);
 }
 
-export async function createSession(env, userId) {
+export async function newSession(env) {
   const token = randomToken(32);
   const tokenHash = await sha256Hex(token);
   const csrf = randomToken(24);
   const days = Math.max(1, Math.min(30, Number.parseInt(env.SESSION_TTL_DAYS || "14", 10)));
   const expiresAt = futureIso(days * 86_400_000);
+  return { id: randomToken(16), token, tokenHash, csrf, expiresAt, cookie: sessionCookie(token, days * 86_400, env.COOKIE_SAME_SITE || "Lax") };
+}
+
+export async function createSession(env, userId) {
+  const session = await newSession(env);
   await env.DB.prepare("INSERT INTO sessions(id, token_hash, user_id, csrf_token, expires_at) VALUES(?, ?, ?, ?, ?)")
-    .bind(randomToken(16), tokenHash, userId, csrf, expiresAt).run();
-  return { token, csrf, expiresAt, cookie: sessionCookie(token, days * 86_400, env.COOKIE_SAME_SITE || "Lax") };
+    .bind(session.id, session.tokenHash, userId, session.csrf, session.expiresAt).run();
+  return session;
 }
 
 export async function sessionUser(request, env) {

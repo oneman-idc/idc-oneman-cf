@@ -1,6 +1,6 @@
 import { equalText, hashPassword, verifyPassword } from "../lib/crypto.js";
-import { createSession, deleteSession, ensureWallet, rateLimit, sessionUser } from "../lib/db.js";
-import { assert, bodyJson, clientIp, json, normalizeEmail, randomLetters } from "../lib/util.js";
+import { createSession, deleteSession, ensureWallet, newSession, rateLimit, sessionUser } from "../lib/db.js";
+import { assert, bodyJson, clientIp, HttpError, json, normalizeEmail, randomLetters } from "../lib/util.js";
 
 function validPassword(value) {
   return typeof value === "string" && value.length >= 10 && value.length <= 200 && /[A-Za-z]/.test(value) && /\d/.test(value);
@@ -24,20 +24,38 @@ export async function getSession(request, env) {
 }
 
 export async function bootstrap(request, env) {
+  assert(env.ADMIN_BOOTSTRAP_TOKEN, 503, "bootstrap_token_missing", "ADMIN_BOOTSTRAP_TOKEN is not configured in the Worker");
+  const authorization = request.headers.get("Authorization") || "";
+  assert(equalText(authorization, `Bearer ${env.ADMIN_BOOTSTRAP_TOKEN}`), 401, "invalid_bootstrap_token", "Bootstrap authorization failed");
   await rateLimit(env, `bootstrap:${clientIp(request)}`, 5, 900);
   const count = await env.DB.prepare("SELECT COUNT(*) count FROM users").first();
   assert(Number(count?.count || 0) === 0, 409, "already_initialized", "The application is already initialized");
-  const authorization = request.headers.get("Authorization") || "";
-  assert(env.ADMIN_BOOTSTRAP_TOKEN && equalText(authorization, `Bearer ${env.ADMIN_BOOTSTRAP_TOKEN}`), 401, "invalid_bootstrap_token", "Bootstrap authorization failed");
   const body = await bodyJson(request);
   const email = normalizeEmail(body.email);
   assert(email, 422, "invalid_email", "Enter a valid administrator email");
   assert(validPassword(body.password), 422, "weak_password", "Password must be 10-200 characters and contain letters and numbers");
   const username = await uniqueUsername(env);
-  const inserted = await env.DB.prepare("INSERT INTO users(username, email, password_hash, is_admin) VALUES(?, ?, ?, 1) RETURNING id, username, email, is_admin")
-    .bind(username, email, await hashPassword(body.password, env.SECRET_KEY)).first();
-  await ensureWallet(env, inserted.id);
-  const session = await createSession(env, inserted.id);
+  let passwordHash;
+  try {
+    passwordHash = await hashPassword(body.password, env.SECRET_KEY);
+  } catch (error) {
+    console.error("bootstrap password hashing failed", error);
+    throw new HttpError(500, "bootstrap_password_hash_failed", "The Worker could not secure the administrator password");
+  }
+  const session = await newSession(env);
+  try {
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO users(username, email, password_hash, is_admin) SELECT ?, ?, ?, 1 WHERE NOT EXISTS (SELECT 1 FROM users)").bind(username, email, passwordHash),
+      env.DB.prepare("INSERT OR IGNORE INTO wallets(user_id, currency) SELECT id, 'CNY' FROM users WHERE email = ?").bind(email),
+      env.DB.prepare("INSERT INTO sessions(id, token_hash, user_id, csrf_token, expires_at) SELECT ?, ?, id, ?, ? FROM users WHERE email = ?")
+        .bind(session.id, session.tokenHash, session.csrf, session.expiresAt, email),
+    ]);
+  } catch (error) {
+    console.error("bootstrap D1 transaction failed", error);
+    throw new HttpError(500, "bootstrap_database_failed", "D1 could not create the administrator; verify the DB binding and retry");
+  }
+  const inserted = await env.DB.prepare("SELECT id, username, email, is_admin FROM users WHERE email = ?").bind(email).first();
+  assert(inserted, 409, "already_initialized", "The application is already initialized");
   return json({ ok: true, user: publicUser(inserted), csrf_token: session.csrf }, 201, { "Set-Cookie": session.cookie });
 }
 

@@ -9,6 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("one-click Worker config declares assets, D1, Queues, Cron, and observability", async () => {
   const config = JSON.parse(await readFile(path.join(root, "wrangler.jsonc"), "utf8"));
   assert.equal(config.main, "worker/src/index.js");
+  assert.deepEqual(config.rules, [{ type: "Text", globs: ["**/*.sql"], fallthrough: true }]);
   assert.equal(config.assets.directory, "./pages/dist");
   assert.equal(config.assets.not_found_handling, "single-page-application");
   assert.deepEqual(config.assets.run_worker_first, ["/api/*", "/healthz"]);
@@ -47,4 +48,10 @@ test("deploy template is self-contained and declares required secrets", async ()
   }
   const secrets = await readFile(path.join(root, ".dev.vars.example"), "utf8");
   for (const name of ["SECRET_KEY", "MASTER_KEY", "ADMIN_BOOTSTRAP_TOKEN", "RESEND_API_TOKEN", "EMAIL_FROM"]) assert.match(secrets, new RegExp(`^${name}=`, "m"));
+  const migration = await readFile(path.join(root, "worker", "migrations", "0001_schema.sql"), "utf8");
+  const schemaRuntime = await readFile(path.join(root, "worker", "src", "lib", "schema.js"), "utf8");
+  const schemaCore = await readFile(path.join(root, "worker", "src", "lib", "schema-core.js"), "utf8");
+  for (const column of ["remote_name", "details_state", "details_error"]) assert.match(migration, new RegExp(`\\b${column}\\b`));
+  assert.match(schemaRuntime, /import baseSchema from "\.\.\/\.\.\/migrations\/0001_schema\.sql"/);
+  assert.match(schemaCore, /PRAGMA table_info\(instances\)/);
 });

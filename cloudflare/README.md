@@ -10,6 +10,6 @@
 - `scripts/`：静态资源构建与语法检查。
 - `.dev.vars.example`：Deploy Button 需要收集的三个安全密钥、Resend API Token 和已验证发件地址。
 
-Cloudflare 会自动创建 D1 和 Queues，`npm run deploy` 会先构建前端、应用全部 D1 migration，再发布 Worker。部署完成后打开 Worker URL，使用部署时填写的 `ADMIN_BOOTSTRAP_TOKEN` 创建首位管理员。
+Cloudflare 会自动创建 D1 和 Queues，`npm run deploy` 会先构建前端、应用 D1 migration，再发布 Worker。Worker 首次处理 API、Queue 或 Cron 前还会执行幂等 schema 检查，用于修复一键部署中 migration 未完整落地的空库。部署完成后打开 Worker URL，使用部署时填写的 `ADMIN_BOOTSTRAP_TOKEN` 创建首位管理员。
 
 完整步骤见仓库根目录的 `CLOUDFLARE_DEPLOYMENT.md`。

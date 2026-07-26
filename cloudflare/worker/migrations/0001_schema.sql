@@ -145,7 +145,10 @@ CREATE TABLE IF NOT EXISTS instances (
   clicd_id TEXT,
   clicd_node TEXT NOT NULL DEFAULT '',
   name TEXT NOT NULL,
+  remote_name TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'provisioning',
+  details_state TEXT NOT NULL DEFAULT 'pending' CHECK(details_state IN ('pending', 'complete')),
+  details_error TEXT NOT NULL DEFAULT '',
   ip TEXT NOT NULL DEFAULT '',
   ipv6 TEXT NOT NULL DEFAULT '',
   ssh_port INTEGER NOT NULL DEFAULT 22,
@@ -156,6 +159,7 @@ CREATE TABLE IF NOT EXISTS instances (
   UNIQUE(clicd_node, clicd_id)
 );
 CREATE INDEX IF NOT EXISTS ix_instances_user ON instances(user_id, id DESC);
+CREATE INDEX IF NOT EXISTS ix_instances_delivery_state ON instances(details_state, id);
 
 CREATE TABLE IF NOT EXISTS refund_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

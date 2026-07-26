@@ -31,7 +31,7 @@ Build command: npm run build
 Deploy command: npm run deploy
 ```
 
-`npm run deploy` 会再次确认静态资源构建结果，随后按 D1 binding 名称执行远端 migration，最后发布 Worker。重复执行 migration 是安全的，已应用的 migration 不会重复执行。
+`npm run deploy` 会再次确认静态资源构建结果，随后按 D1 binding 名称执行远端 migration，最后发布 Worker。重复执行 migration 是安全的，已应用的 migration 不会重复执行。Worker 首次处理 API、Queue 或 Cron 前还会检查 16 张必需表和实例交付字段；一键部署过程若留下空库或不完整旧库，会使用随 Worker 打包的幂等 schema 自动补齐。
 
 ## 2. 部署变量说明
 
@@ -286,10 +286,10 @@ npm run deploy
 ## 10. 安全与数据说明
 
 - D1 是独立数据库，一键部署不会导入 Python/FastAPI 版本的 SQLite 数据。
-- 原版 Argon2 密码不能直接变成本版本的 WebCrypto PBKDF2-SHA256 密码，迁移用户时应安排重置密码。
+- 原版 Argon2 密码不能直接转换为 Workers 版本的密码记录，迁移用户时应安排重置密码并生成当前的随机盐 HMAC 记录。
 - Session Token 仅以 SHA-256 哈希存入 D1；Cookie 使用 `HttpOnly; Secure; SameSite=Lax`。
 - 非 GET 写操作要求 `X-CSRF-Token`。
-- 新密码使用 PBKDF2-SHA256 210,000 次并加入 `SECRET_KEY` pepper；早期 PBKDF2/HMAC 记录仅保留登录兼容，用户登录后应安排重置为当前格式。
+- Workers Free 的 HTTP CPU 上限很低。新密码使用独立随机盐与 `SECRET_KEY` pepper 的 HMAC-SHA256，避免高迭代 PBKDF2 导致管理员初始化或登录超过 CPU 上限；早期 PBKDF2/HMAC 记录仍可验证。必须使用高熵 `SECRET_KEY`，数据库备份不得与该 Secret 存放在同一位置。
 - CLICD Token、HashPay 私钥、卡密、实例凭据和 Queue 敏感载荷使用 AES-GCM 加密。
 - 登录、注册、初始化和支付回调使用 D1 限流；生产环境仍建议启用 Cloudflare WAF Rate Limiting。
 - 建议启用 Workers Logs、D1 备份/Time Travel 和 Dead-letter Queue 告警。
@@ -390,7 +390,7 @@ D1 中已经存在用户。请使用现有管理员账号登录；不要删除�
 正式验收建议按以下顺序截图，所有 Token、私钥、密码、Cookie、完整卡密和访问码必须遮挡：
 
 1. Deploy Button 项目确认页：仓库、Account、Worker 名、Build/Deploy 命令；Secret 只显示名称和已填写状态。
-2. Workers Build 日志：`npm run build`、两条 D1 migration 和 `wrangler deploy` 成功。
+2. Workers Build 日志：`npm run build`、D1 migration 和 `wrangler deploy` 成功。
 3. Cloudflare 资源：Worker `vps-one`、D1 `vps-one`、`vps-one-jobs` 与 `vps-one-dead` binding。
 4. `/healthz` 与首页：生产运行时返回值、静态资源和自定义域名。
 5. 管理后台设置：HTTPS/HTTP CLICD 节点状态、HashPay 已配置状态、Resend Token 状态和测试邮件成功提示。
